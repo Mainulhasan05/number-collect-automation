@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const orderHistorySchema = new mongoose.Schema(
   {
-    phone: String,
+    phone: { type: String, unique: true },
     customerName: String,
     customerEmail: String,
     orders: [
