@@ -5,6 +5,7 @@ const searchHistorySchema = new mongoose.Schema(
     startPhone: String,
     range: Number,
     resultsCount: Number,
+    count: Number,
     lastPhone: String,
     createdAt: { type: Date, default: Date.now },
   },
