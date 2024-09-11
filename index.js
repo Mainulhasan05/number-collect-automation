@@ -1,11 +1,10 @@
-// index.js
 const express = require("express");
 const mongoose = require("mongoose");
 require("dotenv").config();
 const OrderHistory = require("./models/orderHistorySchema");
 const SearchHistory = require("./models/searchHistorySchema");
 const axios = require("axios");
-const cors = require("cors");
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -18,10 +17,8 @@ mongoose
 const app = express();
 const PORT = 5000;
 
-app.use(cors());
 app.use(express.json());
 
-// Define a route to handle POST requests
 app.post("/order-history", async (req, res) => {
   const { startPhone, range } = req.body;
 
@@ -34,7 +31,6 @@ app.post("/order-history", async (req, res) => {
   try {
     let totalResults = 0;
     const phoneNumbers = [];
-    const orderHistories = [];
     const promises = [];
 
     // Generate phone numbers and fetch data
@@ -55,8 +51,8 @@ app.post("/order-history", async (req, res) => {
               customerName || orders.some((order) => order.delivered > 0);
 
             if (hasResults) {
-              // Prepare order history data to insert
-              orderHistories.push({
+              // Save order history to MongoDB
+              await OrderHistory.create({
                 phone,
                 customerName,
                 customerEmail,
@@ -74,16 +70,15 @@ app.post("/order-history", async (req, res) => {
     // Wait for all requests to complete
     await Promise.all(promises);
 
-    // Insert order histories to MongoDB
-    if (orderHistories.length > 0) {
-      await OrderHistory.insertMany(orderHistories);
-    }
+    // Determine the last phone number
+    const lastPhone = phoneNumbers[phoneNumbers.length - 1];
 
     // Save search history to MongoDB
     const searchHistory = new SearchHistory({
       startPhone,
       range,
       resultsCount: totalResults,
+      lastPhone,
     });
     await searchHistory.save();
 
