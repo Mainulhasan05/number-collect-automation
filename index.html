@@ -73,29 +73,27 @@
 
           const startPhone = document.getElementById("startPhone").value;
           const range = parseInt(document.getElementById("range").value, 10);
-          const resultsDiv = document.getElementById("results");
           const statusDiv = document.getElementById("status");
+          const resultsDiv = document.getElementById("results");
 
-          resultsDiv.innerHTML = "";
           statusDiv.innerHTML = "Searching...";
 
           try {
-            const requests = [];
-            for (let i = 0; i < range; i++) {
-              const phone =
-                startPhone.slice(0, -1) +
-                (parseInt(startPhone.slice(-1), 10) + i);
-              requests.push(searchPhone(phone));
-            }
-            const responses = await Promise.all(requests);
-            const filteredResponses = responses.filter(
-              (response) =>
-                response.customerName ||
-                response.orders.some((order) => order.total > 0)
+            const response = await fetch(
+              "https://chat.mainulhasan05.xyz/order-history",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ startPhone, range }),
+              }
             );
 
-            if (filteredResponses.length > 0) {
-              displayResults(filteredResponses);
+            const result = await response.json();
+
+            if (result.resultsCount > 0) {
+              displayResults(result.results);
             } else {
               resultsDiv.innerHTML =
                 '<div class="alert alert-info">No matching data found.</div>';
@@ -109,75 +107,47 @@
           }
         });
 
-      async function searchPhone(phone) {
-        const response = await fetch(
-          `https://uddoktabd.com/ajax.php?phone=${phone}`
-        );
-        const data = await response.json();
-
-        if (data.customerName || data.orders.some((order) => order.total > 0)) {
-          await fetch("https://chat.mainulhasan05.xyz/order-history", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              phone: phone,
-              customerName: data.customerName,
-              customerEmail: data.customerEmail,
-              orders: data.orders,
-            }),
-          });
-        }
-
-        return data;
-      }
-
-      function displayResults(responses) {
+      function displayResults(results) {
         let html = "<h2>Results</h2>";
 
-        responses.forEach((response) => {
-          if (response.customerName) {
+        results.forEach((result) => {
+          if (result.customerName) {
             html += `
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <h5 class="card-title">Customer: ${
-                                  response.customerName
-                                }</h5>
-                            </div>
-                            <div class="card-body">
-                                <p><strong>Email:</strong> ${
-                                  response.customerEmail
-                                }</p>
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Courier</th>
-                                            <th>Delivered</th>
-                                            <th>Returned</th>
-                                            <th>Total</th>
-                                            <th>Ratio</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${response.orders
-                                          .map(
-                                            (order) => `
-                                            <tr>
-                                                <td>${order.courier}</td>
-                                                <td>${order.delivered}</td>
-                                                <td>${order.returned}</td>
-                                                <td>${order.total}</td>
-                                                <td>${order.ratio}</td>
-                                            </tr>
-                                        `
-                                          )
-                                          .join("")}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
+            <div class="card mb-3">
+              <div class="card-header">
+                <h5 class="card-title">Customer: ${result.customerName}</h5>
+              </div>
+              <div class="card-body">
+                <p><strong>Email:</strong> ${result.customerEmail || "N/A"}</p>
+                <table class="table table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Courier</th>
+                      <th>Delivered</th>
+                      <th>Returned</th>
+                      <th>Total</th>
+                      <th>Ratio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${result.orders
+                      .map(
+                        (order) => `
+                        <tr>
+                          <td>${order.courier}</td>
+                          <td>${order.delivered}</td>
+                          <td>${order.returned}</td>
+                          <td>${order.total}</td>
+                          <td>${order.ratio}</td>
+                        </tr>
+                      `
+                      )
+                      .join("")}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
           }
         });
 
