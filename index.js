@@ -4,6 +4,7 @@ require("dotenv").config();
 const OrderHistory = require("./models/orderHistorySchema");
 const SearchHistory = require("./models/searchHistorySchema");
 const axios = require("axios");
+const cors = require("cors");
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -17,6 +18,7 @@ mongoose
 const app = express();
 const PORT = 5000;
 
+app.use(cors());
 app.use(express.json());
 
 app.post("/order-history", async (req, res) => {
@@ -31,6 +33,7 @@ app.post("/order-history", async (req, res) => {
   try {
     let totalResults = 0;
     const phoneNumbers = [];
+    let resultsBatch = [];
     const promises = [];
 
     // Generate phone numbers and fetch data
@@ -51,14 +54,20 @@ app.post("/order-history", async (req, res) => {
               customerName || orders.some((order) => order.delivered > 0);
 
             if (hasResults) {
-              // Save order history to MongoDB
-              await OrderHistory.create({
+              // Collect results
+              resultsBatch.push({
                 phone,
                 customerName,
                 customerEmail,
                 orders,
               });
-              totalResults++;
+
+              // Insert into MongoDB in batches of 10
+              if (resultsBatch.length >= 10) {
+                await OrderHistory.insertMany(resultsBatch);
+                totalResults += resultsBatch.length;
+                resultsBatch.length = 0; // Clear the batch
+              }
             }
           })
           .catch((error) =>
@@ -69,6 +78,12 @@ app.post("/order-history", async (req, res) => {
 
     // Wait for all requests to complete
     await Promise.all(promises);
+
+    // Insert remaining results if there are any
+    if (resultsBatch.length > 0) {
+      await OrderHistory.insertMany(resultsBatch);
+      totalResults += resultsBatch.length;
+    }
 
     // Determine the last phone number
     const lastPhone = phoneNumbers[phoneNumbers.length - 1];
